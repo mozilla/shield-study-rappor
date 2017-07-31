@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Example Shield Study Embedded Web Extension
 
 ## install
@@ -40,3 +41,6 @@ During `bootstrap.js:startup(data, reason)`:
     g.  Feature instruments user button to send `telemetry` and to `endStudy` if the button is clicked enough.
 
 
+=======
+# shield-study-rappor
+>>>>>>> 6f21c68e1c5e0f2ce94dbb0d27ae68a462c00a7d
