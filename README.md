@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# Example Shield Study Embedded Web Extension
+# shield-study-rappor
 
 ## install
 
@@ -39,8 +38,3 @@ During `bootstrap.js:startup(data, reason)`:
     e.  `webExtension` (`background.js`) asks for `info` from `studyUtils` using `askShield` function.
     f.  Feature starts using the `variation` from that info.
     g.  Feature instruments user button to send `telemetry` and to `endStudy` if the button is clicked enough.
-
-
-=======
-# shield-study-rappor
->>>>>>> 6f21c68e1c5e0f2ce94dbb0d27ae68a462c00a7d
