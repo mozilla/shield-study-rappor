@@ -1,11 +1,11 @@
 {
   "name": "shield-study-rappor",
   "version": "1.0.0",
-  "description": "<some feature> as a Shield Study",
+  "description": "RAPPOR as a Shield Study",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "XPI=shield-study-name.xpi bash ./bin/xpi.sh",
+    "build": "XPI=shield-study-rappor.xpi bash ./bin/xpi.sh",
     "eslint": "eslint addon --ext jsm --ext js --ext json --",
     "watch": "onchange 'addon/**' 'package.json' 'template/**' -e addon/install.rdf -e addon/chrome.manifest -e addon/StudyUtils.jsm -- npm run build -- '{{event}} {{changed}} $(date)'"
   },
@@ -24,15 +24,15 @@
   },
   "addon": {
     "version": "1.0.0",
-    "id": "shield-study-id@mozilla.com",
+    "id": "shield-study-rappor@mozilla.com",
     "name": "Shield Bootstrap Example",
     "minVersion": "53.0",
     "maxVersion": "*",
     "multiprocessCompatible": true,
-    "hasEmbeddedWebExtension": true,
-    "creator": "Author name <author@email.com>",
+    "hasEmbeddedWebExtension": false,
+    "creator": "Alejandro Rodriguez <arodriguez@mozilla.com>",
     "description": "<description>",
-    "chrome": "shield-study-id"
+    "chrome": "shield-study-rappor"
   },
   "dependencies": {}
 }

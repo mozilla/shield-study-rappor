@@ -8,11 +8,16 @@ const {utils: Cu} = Components;
 const CONFIGPATH = `${__SCRIPT_URI_SPEC__}/../Config.jsm`;
 const { config } = Cu.import(CONFIGPATH, {});
 const studyConfig = config.study;
+
 Cu.import("resource://gre/modules/Console.jsm");
+Cu.import("resource://gre/modules/Preferences.jsm");
+
 const log = createLog(studyConfig.studyName, config.log.bootstrap.level);  // defined below.
 
 const STUDYUTILSPATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.studyUtilsPath}`;
 const { studyUtils } = Cu.import(STUDYUTILSPATH, {});
+const PREF_HOMEPAGE = "browser.startup.homepage";
+
 
 async function startup(addonData, reason) {
   // addonData: Array [ "id", "version", "installPath", "resourceURI", "instanceID", "webExtension" ]  bootstrap.js:48
@@ -28,6 +33,8 @@ async function startup(addonData, reason) {
   studyUtils.setVariation(variation);
 
   Jsm.import(config.modules);
+
+  console.log("The homepage is:",  Preferences.get(PREF_HOMEPAGE, null));
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
     studyUtils.firstSeen();  // sends telemetry "enter"
