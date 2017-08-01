@@ -1,10 +1,16 @@
+/* 
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. 
+ */
+
 "use strict";
 
 
 /* global  __SCRIPT_URI_SPEC__  */
 /* eslint no-unused-vars: ["error", { "varsIgnorePattern": "(startup|shutdown|install|uninstall)" }]*/
 
-const {Ci: interfaces, utils: Cu} = Components;
+const {classes:Cc, interfaces: Ci, utils: Cu} = Components;
 const CONFIGPATH = `${__SCRIPT_URI_SPEC__}/../Config.jsm`;
 const { config } = Cu.import(CONFIGPATH, {});
 const studyConfig = config.study;
@@ -16,6 +22,10 @@ const log = createLog(studyConfig.studyName, config.log.bootstrap.level);  // de
 
 const STUDYUTILSPATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.studyUtilsPath}`;
 const { studyUtils } = Cu.import(STUDYUTILSPATH, {});
+
+//const RAPPORPATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.rapporPath}`;
+//const { rappor } = Cu.import(RAPPORPATH, {});
+
 const PREF_HOMEPAGE = "browser.startup.homepage";
 
 
@@ -25,7 +35,7 @@ async function startup(addonData, reason) {
   studyUtils.setup({
     studyName: studyConfig.studyName,
     endings: studyConfig.endings,
-    addon: {id: addonData.id, version: addonData.version},
+    addon: { id: addonData.id, version: addonData.version },
     telemetry: studyConfig.telemetry,
   });
   studyUtils.setLoggingLevel(config.log.studyUtils.level);
@@ -34,7 +44,23 @@ async function startup(addonData, reason) {
 
   Jsm.import(config.modules);
 
-  console.log("The homepage is:",  Services.prefs.getComplexValue(PREF_HOMEPAGE, Ci.nsIPrefLocalizedString).data);
+  var homepage = Services.prefs.getComplexValue(PREF_HOMEPAGE, Ci.nsIPrefLocalizedString).data;
+  var homepageURI = Services.netUtils.newURI(homepage, null, null);
+
+  console.log("The homepage is:", homepage);
+  var eTLD;
+  if (homepage.startsWith("about:")) {
+    console.log("about:pages");
+    eTLD = "about:pages";
+  } else {
+    try {
+      eTLD = Services.eTLD.getBaseDomain(homepageURI);
+    } catch (e) {
+      // getBaseDomain will fail if the host is an IP address or is empty
+      eTLD = homepage;
+    }
+    console.log("eTLD", eTLD);
+  }
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
     studyUtils.firstSeen();  // sends telemetry "enter"
