@@ -21,9 +21,6 @@ var EXPORTED_SYMBOLS = ["config"];
 var config = {
   "study": {
     "studyName": "mostImportantExperiment", // no spaces, for all the reasons
-    "variation": {
-      "name": "kittens",
-    }, // optional, use to override/decide
     "weightedVariations": [
       {"name": "control",
         "weight": 1},
@@ -67,7 +64,7 @@ var config = {
       // TODO "onInvalid": "throw"  // invalid packet for schema?  throw||log
     },
     "studyUtilsPath": `./StudyUtils.jsm`,
-    //"rapporPath": `./Rappor.jsm`,
+    "rapporPath": `./Rappor.jsm`,
   },
   "isEligible": async function() {
     // get whatever prefs, addons, telemetry, anything!

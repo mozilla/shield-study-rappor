@@ -23,8 +23,8 @@ const log = createLog(studyConfig.studyName, config.log.bootstrap.level);  // de
 const STUDYUTILSPATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.studyUtilsPath}`;
 const { studyUtils } = Cu.import(STUDYUTILSPATH, {});
 
-//const RAPPORPATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.rapporPath}`;
-//const { rappor } = Cu.import(RAPPORPATH, {});
+const RAPPORPATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.rapporPath}`;
+const { rappor } = Cu.import(RAPPORPATH, {});
 
 const PREF_HOMEPAGE = "browser.startup.homepage";
 
@@ -44,23 +44,7 @@ async function startup(addonData, reason) {
 
   Jsm.import(config.modules);
 
-  var homepage = Services.prefs.getComplexValue(PREF_HOMEPAGE, Ci.nsIPrefLocalizedString).data;
-  var homepageURI = Services.netUtils.newURI(homepage, null, null);
-
-  console.log("The homepage is:", homepage);
-  var eTLD;
-  if (homepage.startsWith("about:")) {
-    console.log("about:pages");
-    eTLD = "about:pages";
-  } else {
-    try {
-      eTLD = Services.eTLD.getBaseDomain(homepageURI);
-    } catch (e) {
-      // getBaseDomain will fail if the host is an IP address or is empty
-      eTLD = homepage;
-    }
-    console.log("eTLD", eTLD);
-  }
+  let eLTDHomepages = getHomepage();
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
     studyUtils.firstSeen();  // sends telemetry "enter"
@@ -77,6 +61,27 @@ async function startup(addonData, reason) {
 
   console.log(`info ${JSON.stringify(studyUtils.info())}`);
   // studyUtils.endStudy("user-disable");
+}
+
+function getHomepage(){
+  // get the homepage of the user
+  var homepage = Services.prefs.getComplexValue(PREF_HOMEPAGE, Ci.nsIPrefLocalizedString).data;
+  // transform the homepage into a nsIURI. Neccesary to get the base domain
+  var homepageURI = Services.netUtils.newURI(homepage);
+
+  var eTLD;
+  if (homepage.startsWith("about:")) {
+    // If the homepage starts with 'about:' (see about:about)
+    eTLD = "about:pages";
+  } else {
+    try {
+      eTLD = Services.eTLD.getBaseDomain(homepageURI);
+    } catch (e) {
+      // getBaseDomain will fail if the host is an IP address or is empty
+      eTLD = homepage;
+    }
+  }
+  return eTLD;
 }
 
 
