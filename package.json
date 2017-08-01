@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "<some feature> as a Shield Study",
   "main": "index.js",
+  "engines" : {
+    "node" : ">=8.0"
+  },
+  "engineStrict" : true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "XPI=shield-study-name.xpi bash ./bin/xpi.sh",
+    "build": "export XPI=\"shield-study-name.xpi\" | bash ./bin/xpi.sh",
     "eslint": "eslint addon --ext jsm --ext js --ext json --",
     "watch": "onchange 'addon/**' 'package.json' 'template/**' -e addon/install.rdf -e addon/chrome.manifest -e addon/StudyUtils.jsm -- npm run build -- '{{event}} {{changed}} $(date)'"
   },
