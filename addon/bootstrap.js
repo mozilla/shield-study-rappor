@@ -4,13 +4,13 @@
 /* global  __SCRIPT_URI_SPEC__  */
 /* eslint no-unused-vars: ["error", { "varsIgnorePattern": "(startup|shutdown|install|uninstall)" }]*/
 
-const {utils: Cu} = Components;
+const {Ci: interfaces, utils: Cu} = Components;
 const CONFIGPATH = `${__SCRIPT_URI_SPEC__}/../Config.jsm`;
 const { config } = Cu.import(CONFIGPATH, {});
 const studyConfig = config.study;
 
 Cu.import("resource://gre/modules/Console.jsm");
-Cu.import("resource://gre/modules/Preferences.jsm");
+Cu.import("resource://gre/modules/Services.jsm");
 
 const log = createLog(studyConfig.studyName, config.log.bootstrap.level);  // defined below.
 
@@ -34,7 +34,7 @@ async function startup(addonData, reason) {
 
   Jsm.import(config.modules);
 
-  console.log("The homepage is:",  Preferences.get(PREF_HOMEPAGE, null));
+  console.log("The homepage is:",  Services.prefs.getComplexValue(PREF_HOMEPAGE, Ci.nsIPrefLocalizedString).data);
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
     studyUtils.firstSeen();  // sends telemetry "enter"
@@ -50,14 +50,6 @@ async function startup(addonData, reason) {
   await studyUtils.startup({reason});
 
   console.log(`info ${JSON.stringify(studyUtils.info())}`);
-  // if you have code to handle expiration / long-timers, it could go here.
-  const webExtension = addonData.webExtension;
-  webExtension.startup().then(api => {
-    const {browser} = api;
-    // messages intended for shieldn:  {shield:true,msg=[info|endStudy|telemetry],data=data}
-    browser.runtime.onMessage.addListener(studyUtils.respondToWebExtensionMessage);
-    //  other message handlers from your addon, if any
-  });
   // studyUtils.endStudy("user-disable");
 }
 

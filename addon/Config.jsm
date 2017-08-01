@@ -61,6 +61,7 @@ var config = {
       // TODO "onInvalid": "throw"  // invalid packet for schema?  throw||log
     },
     "studyUtilsPath": `./StudyUtils.jsm`,
+    "rapporPath": `./Rappor.jsm`,
   },
   "isEligible": async function() {
     // get whatever prefs, addons, telemetry, anything!
