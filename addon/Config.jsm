@@ -63,8 +63,8 @@ var config = {
       "removeTestingFlag": false,  // Marks pings as testing, set true for actual release
       // TODO "onInvalid": "throw"  // invalid packet for schema?  throw||log
     },
+    "telemetryRapporPath": `./TelemetryRappor.jsm`,
     "studyUtilsPath": `./StudyUtils.jsm`,
-    "rapporPath": `./Rappor.jsm`,
   },
   "isEligible": async function() {
     // get whatever prefs, addons, telemetry, anything!
