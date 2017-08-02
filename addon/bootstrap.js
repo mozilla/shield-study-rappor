@@ -6,7 +6,6 @@
 
 "use strict";
 
-
 /* global  __SCRIPT_URI_SPEC__  */
 /* eslint no-unused-vars: ["error", { "varsIgnorePattern": "(startup|shutdown|install|uninstall)" }]*/
 
@@ -16,6 +15,8 @@ const { config } = Cu.import(CONFIGPATH, {});
 const studyConfig = config.study;
 
 Cu.import("resource://gre/modules/Console.jsm");
+const console = new ConsoleAPI({prefix: "shield-study-rappor"});
+
 Cu.import("resource://gre/modules/Services.jsm");
 
 const log = createLog(studyConfig.studyName, config.log.bootstrap.level);  // defined below.
@@ -28,10 +29,38 @@ const { TelemetryRappor } = Cu.import(RAPPORPATH, {});
 
 const PREF_HOMEPAGE = "browser.startup.homepage";
 
+// addon state change reasons
+const REASONS = {
+  APP_STARTUP: 1,      // The application is starting up.
+  APP_SHUTDOWN: 2,     // The application is shutting down.
+  ADDON_ENABLE: 3,     // The add-on is being enabled.
+  ADDON_DISABLE: 4,    // The add-on is being disabled. (Also sent during uninstallation)
+  ADDON_INSTALL: 5,    // The add-on is being installed.
+  ADDON_UNINSTALL: 6,  // The add-on is being uninstalled.
+  ADDON_UPGRADE: 7,    // The add-on is being upgraded.
+  ADDON_DOWNGRADE: 8,  // The add-on is being downgraded.
+};
+for (const r in REASONS) { REASONS[REASONS[r]] = r; }
+
+// jsm loader / unloader
+class Jsm {
+  static import(modulesArray) {
+    for (const module of modulesArray) {
+      log.debug(`loading ${module}`);
+      Cu.import(module);
+    }
+  }
+  static unload(modulesArray) {
+    for (const module of modulesArray) {
+      log.debug(`Unloading ${module}`);
+      Cu.unload(module);
+    }
+  }
+}
 
 async function startup(addonData, reason) {
   // addonData: Array [ "id", "version", "installPath", "resourceURI", "instanceID", "webExtension" ]  bootstrap.js:48
-  log.debug("startup", REASONS[reason] || reason);
+  Jsm.import(config.modules);
 
   studyUtils.setup({
     studyName: studyConfig.studyName,
@@ -44,10 +73,8 @@ async function startup(addonData, reason) {
   const variation = await chooseVariation();
   studyUtils.setVariation(variation);
 
-  Jsm.import(config.modules);
-
   let eLTDHomepages = getHomepage();
-  var report = TelemetryRappor.createReport(eLTDHomepages);
+  TelemetryRappor.createReport(eLTDHomepages);
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
     studyUtils.firstSeen();  // sends telemetry "enter"
@@ -95,21 +122,6 @@ function install(addonData, reason) {
   // handle ADDON_UPGRADE (if needful) here
 }
 
-/** CONSTANTS and other bootstrap.js utilities */
-
-// addon state change reasons
-const REASONS = {
-  APP_STARTUP: 1,      // The application is starting up.
-  APP_SHUTDOWN: 2,     // The application is shutting down.
-  ADDON_ENABLE: 3,     // The add-on is being enabled.
-  ADDON_DISABLE: 4,    // The add-on is being disabled. (Also sent during uninstallation)
-  ADDON_INSTALL: 5,    // The add-on is being installed.
-  ADDON_UNINSTALL: 6,  // The add-on is being uninstalled.
-  ADDON_UPGRADE: 7,    // The add-on is being upgraded.
-  ADDON_DOWNGRADE: 8,  // The add-on is being downgraded.
-};
-for (const r in REASONS) { REASONS[REASONS[r]] = r; }
-
 // logging
 function createLog(name, levelWord) {
   Cu.import("resource://gre/modules/Log.jsm");
@@ -156,20 +168,4 @@ function getHomepage(){
     }
   }
   return eTLD;
-}
-
-// jsm loader / unloader
-class Jsm {
-  static import(modulesArray) {
-    for (const module of modulesArray) {
-      log.debug(`loading ${module}`);
-      Cu.import(module);
-    }
-  }
-  static unload(modulesArray) {
-    for (const module of modulesArray) {
-      log.debug(`Unloading ${module}`);
-      Cu.unload(module);
-    }
-  }
 }

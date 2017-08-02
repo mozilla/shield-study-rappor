@@ -10,10 +10,12 @@ const EXPORTED_SYMBOLS = ["TelemetryRappor"];
 const PREF_RAPPOR_PATH = "toolkit.telemetry.rappor.";
 const PREF_RAPPOR_SECRET = PREF_RAPPOR_PATH + "secret";
 
+Components.utils.import("resource://gre/modules/Console.jsm");
+const console = new ConsoleAPI({prefix: "shield-study-rappor"});
 
 var TelemetryRappor = {
 
-    createReport: function(name /*, k = 16, h = 2, cohorts = 128, f = 0.5, p = 0.5, q = 0.75*/) {
+    createReport: function(name/*, k = 16, h = 2, cohorts = 128, f = 0.5, p = 0.5, q = 0.75*/) {
         console.log("TelemetryRappor");
     }
 };
