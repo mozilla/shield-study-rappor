@@ -47,7 +47,7 @@ async function startup(addonData, reason) {
   Jsm.import(config.modules);
 
   let eLTDHomepages = getHomepage();
-  report = TelemetryRappor.createReport(homepage);
+  report = TelemetryRappor.createReport(eLTDHomepages);
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
     studyUtils.firstSeen();  // sends telemetry "enter"
