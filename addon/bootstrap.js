@@ -46,13 +46,13 @@ for (const r in REASONS) { REASONS[REASONS[r]] = r; }
 class Jsm {
   static import(modulesArray) {
     for (const module of modulesArray) {
-      log.debug(`loading ${module}`);
+      console.log(`loading ${module}`);
       Cu.import(module);
     }
   }
   static unload(modulesArray) {
     for (const module of modulesArray) {
-      log.debug(`Unloading ${module}`);
+      console.log(`Unloading ${module}`);
       Cu.unload(module);
     }
   }
@@ -68,13 +68,9 @@ async function startup(addonData, reason) {
     addon: { id: addonData.id, version: addonData.version },
     telemetry: studyConfig.telemetry,
   });
-
   studyUtils.setLoggingLevel(config.log.studyUtils.level);
   const variation = await chooseVariation();
   studyUtils.setVariation(variation);
-
-  let eLTDHomepages = getHomepage();
-  TelemetryRappor.createReport(eLTDHomepages);
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
     studyUtils.firstSeen();  // sends telemetry "enter"
@@ -91,6 +87,16 @@ async function startup(addonData, reason) {
 
   console.log(`info ${JSON.stringify(studyUtils.info())}`);
   // studyUtils.endStudy("user-disable");
+  let eLTDHomepages = getHomepage();
+  let report = TelemetryRappor.createReport("name", eLTDHomepages);
+  console.log(report);
+}
+
+function unload() {
+  // normal shutdown, or 2nd attempts
+  console.log("Jsms unloading");
+  Jsm.unload(config.modules);
+  Jsm.unload([CONFIGPATH, STUDYUTILSPATH, RAPPORPATH]);
 }
 
 function shutdown(addonData, reason) {
@@ -103,14 +109,9 @@ function shutdown(addonData, reason) {
       // we are the first requestors, must be user action.
       console.log("user requested shutdown");
       studyUtils.endStudy({reason: "user-disable"});
-      return;
     }
-
-  // normal shutdown, or 2nd attempts
-    console.log("Jsms unloading");
-    Jsm.unload(config.modules);
-    Jsm.unload([CONFIGPATH, STUDYUTILSPATH]);
   }
+  unload();
 }
 
 function uninstall(addonData, reason) {
