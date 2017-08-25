@@ -35,7 +35,7 @@ RAPPOR has been executed.
 
 ### Structure
 
-```JSON
+```JS
 {
   "type": "shield-study-addon",
   ... common ping data
