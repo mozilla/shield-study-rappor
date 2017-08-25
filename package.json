@@ -1,12 +1,12 @@
 {
   "name": "shield-study-rappor",
   "version": "1.0.0",
-  "description": "RAPPOR as a Shield Study",
-  "main": "index.js",
-  "engines" : {
-    "node" : ">=8.0"
+  "description": "RAPPOR Shield study to collect homepage's eTLD+1",
+  "main": "addon/bootstrap.js",
+  "engines": {
+    "firefox": ">=45.0 <=*"
   },
-  "engineStrict" : true,
+  "engineStrict": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "export XPI=\"shield-study-name.xpi\" | bash ./bin/xpi.sh",
@@ -29,13 +29,13 @@
   "addon": {
     "version": "1.0.0",
     "id": "shield-study-rappor@mozilla.com",
-    "name": "Shield Bootstrap Example",
+    "name": "eTLD+1 Shield Study RAPPOR",
     "minVersion": "53.0",
     "maxVersion": "*",
     "multiprocessCompatible": true,
     "hasEmbeddedWebExtension": false,
     "creator": "Alejandro Rodriguez <arodriguez@mozilla.com>",
-    "description": "<description>",
+    "description": "RAPPOR Shield study to collect homepage's eTLD+1",
     "chrome": "shield-study-rappor"
   },
   "dependencies": {}

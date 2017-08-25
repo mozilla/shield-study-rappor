@@ -1,4 +1,4 @@
-/* 
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. 
@@ -14,22 +14,29 @@ const CONFIGPATH = `${__SCRIPT_URI_SPEC__}/../Config.jsm`;
 const { config } = Cu.import(CONFIGPATH, {});
 const studyConfig = config.study;
 
-Cu.import("resource://gre/modules/Console.jsm");
-const console = new ConsoleAPI({prefix: "shield-study-rappor"});
-
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("resource://gre/modules/Log.jsm");
 
-const log = createLog(studyConfig.studyName, config.log.bootstrap.level);  // defined below.
+const STUDY_UTILS_PATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.studyUtilsPath}`;
+const HOMEPAGE_STUDY_PATH = `${__SCRIPT_URI_SPEC__}/../HomepageStudy.jsm`;
 
-const STUDYUTILSPATH = `${__SCRIPT_URI_SPEC__}/../${studyConfig.studyUtilsPath}`;
-const { studyUtils } = Cu.import(STUDYUTILSPATH, {});
+const { studyUtils } = Cu.import(STUDY_UTILS_PATH, {});
 
-const RAPPORPATH = `${__SCRIPT_URI_SPEC__}/.././TelemetryRappor.jsm`;
-const { TelemetryRappor } = Cu.import(RAPPORPATH, {});
+const log = createLog(studyConfig.studyName, config.log.bootstrap.level);
 
-const PREF_HOMEPAGE = "browser.startup.homepage";
+/**
+ * Create the logger
+ * @param {string} name - Name to show in the logs.
+ * @param {string} level - Log level.
+ */
+function createLog(name, level) {
+  var logger = Log.repository.getLogger(name);
+  logger.level = Log.Level[level] || Log.Level.Debug;
+  logger.addAppender(new Log.ConsoleAppender(new Log.BasicFormatter()));
+  return logger;
+}
 
-// addon state change reasons
+// Addon state change reasons.
 const REASONS = {
   APP_STARTUP: 1,      // The application is starting up.
   APP_SHUTDOWN: 2,     // The application is shutting down.
@@ -40,74 +47,91 @@ const REASONS = {
   ADDON_UPGRADE: 7,    // The add-on is being upgraded.
   ADDON_DOWNGRADE: 8,  // The add-on is being downgraded.
 };
+
 for (const r in REASONS) { REASONS[REASONS[r]] = r; }
 
-// jsm loader / unloader
+// Jsm loader / unloader.
 class Jsm {
   static import(modulesArray) {
     for (const module of modulesArray) {
-      console.log(`loading ${module}`);
+      log.debug(`loading ${module}`);
       Cu.import(module);
     }
   }
   static unload(modulesArray) {
     for (const module of modulesArray) {
-      console.log(`Unloading ${module}`);
+      log.debug(`Unloading ${module}`);
       Cu.unload(module);
     }
   }
 }
 
 async function startup(addonData, reason) {
-  // addonData: Array [ "id", "version", "installPath", "resourceURI", "instanceID", "webExtension" ]  bootstrap.js:48
+  // NOTE: the chrome url registered in the manifest and used in the HomepageStudy.jsm
+  // is only available once the addon has been started, deferring the jsm loading to be able to
+  // use chrome urls to import all the other jsm.
+  let HomepageStudy = Cu.import(HOMEPAGE_STUDY_PATH, {}).HomepageStudy;
   Jsm.import(config.modules);
 
   studyUtils.setup({
     studyName: studyConfig.studyName,
     endings: studyConfig.endings,
-    addon: { id: addonData.id, version: addonData.version },
+    addon: {
+      id: addonData.id,
+      version: addonData.version
+    },
     telemetry: studyConfig.telemetry,
   });
-  studyUtils.setLoggingLevel(config.log.studyUtils.level);
-  const variation = await chooseVariation();
-  studyUtils.setVariation(variation);
+  studyUtils.setVariation(studyConfig.variation);
 
   if ((REASONS[reason]) === "ADDON_INSTALL") {
-    studyUtils.firstSeen();  // sends telemetry "enter"
-    const eligible = await config.isEligible(); // addon-specific
+    // Sends telemetry "enter".
+    studyUtils.firstSeen();
+    const eligible = await config.isEligible();
     if (!eligible) {
-      // uses config.endings.ineligible.url if any,
-      // sends UT for "ineligible"
-      // then uninstalls addon
+      // Uses config.endings.ineligible.url if any.
+      // Send a ping if the user is ineligible to run the study.
+      // Then uninstalls addon.
       await studyUtils.endStudy({reason: "ineligible"});
       return;
     }
   }
   await studyUtils.startup({reason});
 
-  console.log(`info ${JSON.stringify(studyUtils.info())}`);
-  // studyUtils.endStudy("user-disable");
-  let eLTDHomepages = getHomepage();
-  let report = TelemetryRappor.createReport("name", eLTDHomepages);
-  console.log(report);
+  log.debug(`info ${JSON.stringify(studyUtils.info())}`);
+
+  let value = HomepageStudy.reportValue(studyUtils.studyName);
+  if (!value) {
+    studyUtils.endStudy({reason: "ignored"});
+    return;
+  }
+  // Send RAPPOR response to Telemetry.
+  studyUtils.telemetry({
+    cohort: value.cohort.toString(),
+    report: value.report
+  });
+  studyUtils.endStudy({reason: "done"});
 }
 
+/**
+ * This function unloads the modules when the addon is
+ * uninstalled.
+ */
 function unload() {
-  // normal shutdown, or 2nd attempts
-  console.log("Jsms unloading");
+  // Normal shutdown, or 2nd attempts.
+  log.debug("Jsms unloading");
   Jsm.unload(config.modules);
-  Jsm.unload([CONFIGPATH, STUDYUTILSPATH, RAPPORPATH]);
+  Jsm.unload([CONFIGPATH, STUDY_UTILS_PATH, HOMEPAGE_STUDY_PATH]);
 }
 
 function shutdown(addonData, reason) {
-  console.log("shutdown", REASONS[reason] || reason);
-  // are we uninstalling?
-  // if so, user or automatic?
+  log.debug("shutdown", REASONS[reason] || reason);
+  // Are we uninstalling? if so, user or automatic?
   if (reason === REASONS.ADDON_UNINSTALL || reason === REASONS.ADDON_DISABLE) {
-    console.log("uninstall or disable");
+    log.debug("uninstall or disable");
     if (!studyUtils._isEnding) {
-      // we are the first requestors, must be user action.
-      console.log("user requested shutdown");
+      // We are the first requestors, must be user action.
+      log.debug("user requested shutdown");
       studyUtils.endStudy({reason: "user-disable"});
     }
   }
@@ -115,58 +139,11 @@ function shutdown(addonData, reason) {
 }
 
 function uninstall(addonData, reason) {
-  console.log("uninstall", REASONS[reason] || reason);
+  log.debug("uninstall", REASONS[reason] || reason);
 }
 
 function install(addonData, reason) {
-  console.log("install", REASONS[reason] || reason);
-  // handle ADDON_UPGRADE (if needful) here
-}
-
-// logging
-function createLog(name, levelWord) {
-  Cu.import("resource://gre/modules/Log.jsm");
-  var L = Log.repository.getLogger(name);
-  L.addAppender(new Log.ConsoleAppender(new Log.BasicFormatter()));
-  L.level = Log.Level[levelWord] || Log.Level.Debug; // should be a config / pref
-  return L;
-}
-
-async function chooseVariation() {
-  let toSet, source;
-  const sample = studyUtils.sample;
-
-  if (studyConfig.variation) {
-    source = "startup-config";
-    toSet = studyConfig.variation;
-  } else {
-    source = "weightedVariation";
-    // this is the standard arm choosing method
-    const clientId = await studyUtils.getTelemetryId();
-    const hashFraction = await sample.hashFraction(studyConfig.studyName + clientId, 12);
-    toSet = sample.chooseWeighted(studyConfig.weightedVariations, hashFraction);
-  }
-  log.debug(`variation: ${toSet} source:${source}`);
-  return toSet;
-}
-
-function getHomepage(){
-  // get the homepage of the user
-  var homepage = Services.prefs.getComplexValue(PREF_HOMEPAGE, Ci.nsIPrefLocalizedString).data;
-  // transform the homepage into a nsIURI. Neccesary to get the base domain
-  var homepageURI = Services.netUtils.newURI(homepage);
-
-  var eTLD;
-  if (homepage.startsWith("about:")) {
-    // If the homepage starts with 'about:' (see about:about)
-    eTLD = "about:pages";
-  } else {
-    try {
-      eTLD = Services.eTLD.getBaseDomain(homepageURI);
-    } catch (e) {
-      // getBaseDomain will fail if the host is an IP address or is empty
-      eTLD = homepage;
-    }
-  }
-  return eTLD;
-}
+  // NOTE: the registered chrome url is not available in the install phase,
+  // it is only available once the addon has been started.
+  //log.debug("install", REASONS[reason] || reason);
+ }

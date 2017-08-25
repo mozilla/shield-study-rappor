@@ -16,19 +16,12 @@
 /* eslint no-unused-vars: ["error", { "varsIgnorePattern": "(config|EXPORTED_SYMBOLS)" }]*/
 var EXPORTED_SYMBOLS = ["config"];
 
-// var slug = "shield-example-addon"; // should match chrome.manifest;
-
 var config = {
   "study": {
-    "studyName": "mostImportantExperiment", // no spaces, for all the reasons
-    "weightedVariations": [
-      {"name": "control",
-        "weight": 1},
-      {"name": "kittens",
-        "weight": 1.5},
-      {"name": "puppers",
-        "weight": 2},  // we want more puppers in our sample
-    ],
+    "studyName": "TelemetryRAPPOR",
+    "variation": {
+      "name": "eTLD+1",
+    },
     /** **endings**
       * - keys indicate the 'endStudy' even that opens these.
       * - urls should be static (data) or external, because they have to
@@ -39,19 +32,13 @@ var config = {
     "endings": {
       /** standard endings */
       "user-disable": {
-        "baseUrl": "data:,You uninstalled",
+        "baseUrl": null,
       },
       "ineligible": {
-        "baseUrl": "http://www.example.com/?reason=ineligible",
+        "baseUrl": null,
       },
       "expired": {
-        "baseUrl": "http://www.example.com/?reason=expired",
-      },
-      /** User defined endings */
-      "too-popular": {
-        // data uri made using `datauri-cli`
-        "baseUrl": "data:text/html;base64,PGh0bWw+CiAgPGJvZHk+CiAgICA8cD5Zb3UgYXJlIHVzaW5nIHRoaXMgZmVhdHVyZSA8c3Ryb25nPlNPIE1VQ0g8L3N0cm9uZz4gdGhhdCB3ZSBrbm93IHlvdSBsb3ZlIGl0IQogICAgPC9wPgogICAgPHA+VGhlIEV4cGVyaW1lbnQgaXMgb3ZlciBhbmQgd2UgYXJlIFVOSU5TVEFMTElORwogICAgPC9wPgogIDwvYm9keT4KPC9odG1sPgo=",
-        "study_state": "ended-positive",  // neutral is default
+        "baseUrl": null,
       },
       "a-non-url-opening-ending": {
         "study_state": "ended-neutral",
@@ -59,30 +46,27 @@ var config = {
       },
     },
     "telemetry": {
-      "send": true, // assumed false. Actually send pings?
-      "removeTestingFlag": false,  // Marks pings as testing, set true for actual release
-      // TODO "onInvalid": "throw"  // invalid packet for schema?  throw||log
+      "send": true,
+      // Shield study utils includes that in the telemetry payload
+      // to exclude testing data from analysis at a later point.
+      // Set to false for testing.
+      "removeTestingFlag": true,
     },
-    "telemetryRapporPath": `./TelemetryRappor.jsm`,
     "studyUtilsPath": `./StudyUtils.jsm`,
   },
   "isEligible": async function() {
-    // get whatever prefs, addons, telemetry, anything!
-    // Cu.import can see 'firefox things', but not package things.
+    // Everyone is elegible for this study. We want to get unbiased data
+    // from the entire population.
     return true;
   },
-  // addon-specific modules to load/unload during `startup`, `shutdown`
-  "modules": [
-    // can use ${slug} here for example
-  ],
+  // addon-specific modules to load/unload during `startup`, `shutdown`.
+  // If it doesn't exist, the addon crashes when Jsm.import is called.
+  "modules": [],
   // sets the logging for BOTH the bootstrap file AND shield-study-utils
   "log": {
-    // Fatal: 70, Error: 60, Warn: 50, Info: 40, Config: 30, Debug: 20, Trace: 10, All: -1,
+    // Fatal: 70, Error: 60, Warn: 50, Info: 40, Config: 30, Debug: 20, Trace: 10, All: 0,
     "bootstrap":  {
-      "level": "Debug",
-    },
-    "studyUtils":  {
-      "level": "Trace",
+      "level": "Info",
     },
   },
 };

@@ -517,7 +517,7 @@ Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.importGlobalProperties(["URL", "crypto", "URLSearchParams"]);
 
-const log = createLog("shield-study-utils", "Debug");
+const log = createLog("shield-study-utils", "Info");
 
 // telemetry utils
 const CID = Cu.import("resource://gre/modules/ClientID.jsm", null);
