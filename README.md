@@ -13,16 +13,14 @@ The purpose of this study is to answer some questions with unbiased data such as
 - "Which sites does a user see heavy Jank on?" 
 
 ## Addon Behaviour
-The addon collects the user's homepage from the `browser.startup.homepage` preference.
-Then, from this value, obtains the eTLD+1. Here, it can fail if the host is 
-an IP address or is empty when calling `Services.eTLD.getBaseDomain`. In such case, the
-study ends.
+The addon extracts the eTLD+1 from the value stored in the `browser.startup.homepage` 
+preference and applies RAPPOR ([bug 1379195](https://bugzilla.mozilla.org/show_bug.cgi?id=1379195)) to make it anonymous. 
+It can fail if the host is an IP address or is empty when calling `Services.eTLD.getBaseDomain`.
+In such case, the study ends. For example, if the value stored in the preference is `foo.bar.com` 
+the addon applies RAPPOR to `bar.com` and then sends the anonymized bit field out.
 Other possiblity is that the user's homepage is `about:home` or other `about:` page.
 In the case of `about:home`, this is the value we use. In the case of other `about:`
 page, the reported value is `about:pages`.
-
-Once the user's homepage eTLD+1 value is obtained, RAPPOR is executed with the 
-parameters chosen in [bug 1379195](https://bugzilla.mozilla.org/show_bug.cgi?id=1379195).
 
 The algorithm returns two values, the cohort and the encoded input value. This is sent
 in a custom ping.
@@ -30,8 +28,7 @@ in a custom ping.
 The cohort is stored in a preference if more than one value needs to be reported.
 
 ## Data format
-This opt-out ping is sent from the addon when the homepage as been collected and 
-RAPPOR has been executed.
+This opt-out ping is sent from the addon when RAPPOR is successfully applied to the extracted eTLD+1 value.
 
 ### Structure
 
@@ -100,20 +97,20 @@ At second shell/prompt, watch files for changes to rebuild:
 ### In Firefox:
 
 1. `about:debugging > [load temporary addon] > choose `dist/addon.xpi`
-2. `tools > Web Developer > Browser Toolbox`
+2. `tools > Web Developer > Browser Toolbox`.
 
 
 ### Description of architecture
 
-Restartless (`bootstrap.js`) extension.
+This addon is structured as a restartless (`bootstrap.js`) extension.
 
 During `bootstrap.js:startup(data, reason)`:
 
-1. `shieldUtils` imports and sets configuration from `Config.jsm`
+1. `shieldUtils` imports and sets configuration from `Config.jsm`.
 2. Modules are imported.
 3. Study is setted up.
 4. RAPPOR is executed.
 4.  `boostrap.js` waits for requests from `HomepageStudy.jsm` the that 
-are study related:  `["info", "telemetry", "endStudy"]`
+are study related:  `["info", "telemetry", "endStudy"]`.
 5.  Data is sent to Telemetry.
 7.  The study ends and the addon is uninstalled.
