@@ -99,6 +99,12 @@ At second shell/prompt, watch files for changes to rebuild:
 1. `about:debugging > [load temporary addon] > choose `dist/addon.xpi`
 2. `tools > Web Developer > Browser Toolbox`.
 
+### Description of the files
+
+- `HomepageStudy.jsm`: implements the logic to extract the eTLD+1 from the preference and apply RAPPOR.
+- `TelemetryRappor.jsm`: implements the RAPPOR algorithm and the related utility functions.
+- `StudyUtils.jsm`: miscellaneous SHIELD utils.
+- `bootstrap.js`: contains addon specific boilerplate code.
 
 ### Description of architecture
 
@@ -110,7 +116,8 @@ During `bootstrap.js:startup(data, reason)`:
 2. Modules are imported.
 3. Study is setted up.
 4. RAPPOR is executed.
-4.  `boostrap.js` waits for requests from `HomepageStudy.jsm` the that 
+4. `boostrap.js` waits for requests from `HomepageStudy.jsm` the that 
 are study related:  `["info", "telemetry", "endStudy"]`.
-5.  Data is sent to Telemetry.
-7.  The study ends and the addon is uninstalled.
+5. Data is sent to Telemetry.
+7. The study ends and the addon is uninstalled.
+
