@@ -238,7 +238,7 @@ function getInstantRandomizedResponse(prr, p, q) {
   // Get a array whose bits are 1 with probability p.
   let pGen = getBloomBits(p, filterSize);
   // Get a array whose bits are 1 with probability q.
-  let qGen = getBloomBits(p, filterSize);
+  let qGen = getBloomBits(q, filterSize);
   // Generate the IRR.
   return mask(prr, pGen, qGen);
 }
