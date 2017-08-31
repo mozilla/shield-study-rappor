@@ -96,7 +96,7 @@ At second shell/prompt, watch files for changes to rebuild:
 
 ### In Firefox:
 
-1. `about:debugging > [load temporary addon] > choose `dist/addon.xpi`
+1. `about:debugging > [load temporary addon] >` choose `dist/addon.xpi`
 2. `tools > Web Developer > Browser Toolbox`.
 
 ### Description of the files
@@ -120,4 +120,28 @@ During `bootstrap.js:startup(data, reason)`:
 are study related:  `["info", "telemetry", "endStudy"]`.
 5. Data is sent to Telemetry.
 7. The study ends and the addon is uninstalled.
+
+## Simulations
+To validate using the simulator, the addon can be set to work in *simulation* mode:
+1. Clone the RAPPOR simulator repository:
+
+```git clone https://github.com/Alexrs95/rappor```
+
+2. Follow the instructions to install the dependencies.
+
+3. Generate data (You can find the list of possible data distributions in [`tests/regtest_spec.py`](https://github.com/Alexrs95/rappor/blob/master/tests/regtest_spec.py):
+
+```./regtest.sh gen-values 'zipf1.5-tiny2-sim_final2'```
+
+4. Set the option `isSimulation` to `true` in `addon/Config.jsm`.
+
+5. Set the option `rapporSimulatorPath` to the location of the RAPPOR simulator in `addon/Config.jsm`.
+
+6. Build the addon with `npm run build`.
+
+7. Run the addon. In Firefox: `about:debugging > [load temporary addon] >` choose `dist/addon.xpi`.
+
+8. Perform the analysis:
+
+```./regtest.sh analysis 'r-zipf1.5-tiny2-sim_final2' 1 'python'```
 

@@ -140,6 +140,21 @@ function makePRNG(seed) {
 }
 
 /**
+ * 
+ * @param {constant} hashingFunction  - Function used to encode. Supported: nsICryptoHash.MD5 and nsICryptoHash.SHA256
+ * @param {string} value - Value to encode.
+ * @param {integer} filterSize - Size of the bloom filter.
+ * @param {integer} numHashFunctions - Number of hash functions.
+ * @param {integer} cohort - Cohort.
+ */
+function encode(hashingFunction, value, filterSize, numHashFunctions, cohort) {
+  if (hashingFunction == Ci.nsICryptoHash.MD5) {
+    return encodeMD5(value, filterSize, numHashFunctions, cohort);
+  }
+  return encodeSHA256(value, filterSize, numHashFunctions, cohort);
+}
+
+/**
  * Hash client’s value v (string) onto the Bloom filter B of size k (in bytes) using
  * h hash functions and the given cohort.
  * @param {string} value - Value to encode.
@@ -147,7 +162,36 @@ function makePRNG(seed) {
  * @param {integer} numHashFunctions - Number of hash functions.
  * @param {integer} cohort - Cohort.
  */
-function encode(value, filterSize, numHashFunctions, cohort) {
+function encodeMD5(value, filterSize, numHashFunctions, cohort) {
+  let bloomFilter = new Uint8Array(filterSize);
+  let hash = Cc["@mozilla.org/security/hash;1"].createInstance(Ci.nsICryptoHash);
+
+  // Seed the hash function with the cohort and the hash function number. Since we
+  // are using a strong hash function we can get away with using [0..k] as seed
+  // instead of using actually different hash functions.
+  hash.init(Ci.nsICryptoHash.MD5);
+  let seed = String.fromCharCode(cohort);
+  let data = bytesFromUTF8(seed + value);
+  hash.update(data, data.length);
+  let result = hash.finish(false);
+  for (let i = 0; i < numHashFunctions; i++) {
+    let idx = result.charCodeAt(i);
+    // Set the corresponding bit in the bloom filter. Shift 3 bits to select the index, as k is
+    // represented in bytes, we need to shift 3 bits to get the correspondign bit (1 byte = 8 bits = 2^3).
+    setBit(bloomFilter, idx % (filterSize << 3));
+  }
+  return bloomFilter;
+}
+
+/**
+ * Hash client’s value v (string) onto the Bloom filter B of size k (in bytes) using
+ * h hash functions and the given cohort.
+ * @param {string} value - Value to encode.
+ * @param {integer} filterSize - Size of the bloom filter.
+ * @param {integer} numHashFunctions - Number of hash functions.
+ * @param {integer} cohort - Cohort.
+ */
+function encodeSHA256(value, filterSize, numHashFunctions, cohort) {
   let bloomFilter = new Uint8Array(filterSize);
   let data = bytesFromUTF8(value);
   let hash = Cc["@mozilla.org/security/hash;1"].createInstance(Ci.nsICryptoHash);
@@ -296,14 +340,62 @@ function getRandomFloat() {
  * @param {integer} cohort - Number of cohorts to use.
  * @param {string} secret - Secret to generate the Permanent Randomized Response.
  * @param {string} name - Name of the experiment.
+ * @param {constant} hashingFunction  - Function used to encode. Supported: nsICryptoHash.MD5 and nsICryptoHash.SHA256
  */
-function createReport(value, filterSize, numHashFunctions, p, q, f, cohort, secret, name) {
+function createReport(value, filterSize, numHashFunctions, p, q, f, cohort, secret, name, hashingFunction) {
   // Instead of storing a permanent randomized response, we use a PRNG and a stored
   // secret to re-compute B' on the fly every time we send a report.
-  let bloomFilter = encode(value, filterSize, numHashFunctions, cohort);
+  let bloomFilter = encode(hashingFunction, value, filterSize, numHashFunctions, cohort);
   let prr = getPermanentRandomizedResponse(bloomFilter, f, secret, name);
   let irr = getInstantRandomizedResponse(prr, p, q);
-  return irr;
+  return {
+    bloom: bloomFilter,
+    irr: irr,
+    prr: prr,
+  };
+}
+
+/**
+ * Generate the RAPPOR secret. This secret never leaves the client.
+ */
+function getSecret() {
+  let secret = null;
+  try {
+    secret = Services.prefs.getCharPref(PREF_RAPPOR_SECRET);
+    if (secret.length != 64) {
+      secret = null;
+    }
+  } catch (e) {
+    log.error("Error getting secret from prefs", e);
+  }
+  if (!secret) {
+    let randomArray = new Uint8Array(32);
+    crypto.getRandomValues(randomArray);
+    secret = bytesToHex(randomArray);
+    Services.prefs.setCharPref(PREF_RAPPOR_SECRET, secret);
+  }
+  return secret;
+}
+
+/**
+ * Returns the cohort. If the cohort is not stored, it's randomly generated
+ * in the range [0, cohorts] and stored in the preferences.
+ * 
+ * @param {string} name - Name to store the cohort.
+ * @param {int} cohorts - Max number of cohorts.
+ */
+function getCohort(name, cohorts){
+  let cohort = null;
+  try {
+    cohort = Services.prefs.getIntPref(PREF_RAPPOR_PATH + name + ".cohort");
+  } catch (e) {
+    log.error("Error getting the cohort", e);
+  }
+  if (!cohort) {
+    cohort = Math.floor(getRandomFloat() * cohorts);
+    Services.prefs.setIntPref(PREF_RAPPOR_PATH + name + ".cohort", cohort);
+  }
+  return cohort;
 }
 
 var TelemetryRappor = {
@@ -311,6 +403,7 @@ var TelemetryRappor = {
    * Receives the parameters for RAPPOR and returns the Instantaneosu Randomized Response.
    * @param {string} name - Name of the experiment. Used to store the preferences.
    * @param {string} value v - Value to submit
+   * @param {constant} hashingFunction  - Function used to encode. Supported: nsICryptoHash.MD5 and nsICryptoHash.SHA256
    * @param {Object} params - The parameters for the RAPPOR algorithm.
    * @param {integer} params.filterSize k - Size of the bloom filter in bytes.
    * @param {integer} params.numHashFunctions h - Number of hash functions.
@@ -318,44 +411,21 @@ var TelemetryRappor = {
    * @param {float} params.f - Value for probability f.
    * @param {float} params.p - Value for probability p.
    * @param {float} params.q - Value for probability q.
+   * @param {int} cohort - Cohort for the simulation.
    *
    * @return An object containing the cohort and the encoded value in hex.
    */
-  createReport(name, value, params) {
-    // Generate the RAPPOR secret. This secret never leaves the client.
-    let secret = null;
-    log.debug("HEYYY");
-    try {
-      secret = Services.prefs.getCharPref(PREF_RAPPOR_SECRET);
-      if (secret.length != 64) {
-        secret = null;
-      }
-    } catch (e) {
-      log.error("Error getting secret from prefs", e);
+  createReport(name, value, params, hashingFunction, cohort = null) {
+    let secret = getSecret(name);
+    if (cohort === null) {
+      cohort = getCohort(name, params.cohorts);
     }
-    if (!secret) {
-      let randomArray = new Uint8Array(32);
-      crypto.getRandomValues(randomArray);
-      secret = bytesToHex(randomArray);
-      Services.prefs.setCharPref(PREF_RAPPOR_SECRET, secret);
-    }
-
-    // If we haven't self-selected a cohort yet for this measurement, then do so now,
-    // otherwise retrieve the cohort.
-    let cohort = null;
-    try {
-      cohort = Services.prefs.getIntPref(PREF_RAPPOR_PATH + name + ".cohort");
-    } catch (e) {
-      log.error("Error getting the cohort", e);
-    }
-    if (!cohort) {
-      cohort = Math.floor(getRandomFloat() * params.cohorts);
-      Services.prefs.setIntPref(PREF_RAPPOR_PATH + name + ".cohort", cohort);
-    }
-
+    let report = createReport(value, params.filterSize, params.numHashFunctions, params.p, params.q, params.f, cohort, secret, name, hashingFunction);
     return {
-      cohort: cohort,
-      report: bytesToHex(createReport(value, params.filterSize, params.numHashFunctions, params.p, params.q, params.f, cohort, secret, name)),
+      internalBloom: bytesToHex(report.bloom),
+      internalPrr: bytesToHex(report.prr),
+      report: bytesToHex(report.irr),
+      cohort: cohort
     };
   },
 
@@ -374,6 +444,6 @@ var TelemetryRappor = {
     makeHMACHasher: makeHMACHasher,
     digest: digest,
     makePRNG: makePRNG,
-    createReport: createReport, 
+    createReport: createReport,
   },
 };

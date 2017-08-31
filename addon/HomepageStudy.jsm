@@ -83,7 +83,9 @@ var HomepageStudy = {
     if (!eTLDHomepage) {
       return null;
     }
-    return TelemetryRappor.createReport(studyName, eTLDHomepage, {filterSize: 16, numHashFunctions: 2,
-                                        cohorts: 100, f: 0.0, p: 0.35, q: 0.65});
+    return TelemetryRappor.createReport(studyName, eTLDHomepage,
+                                        {filterSize: 16, numHashFunctions: 2, cohorts: 100, f: 0.0, p: 0.35, q: 0.65},
+                                        Ci.nsICryptoHash.MD5);
   }
 }
+
