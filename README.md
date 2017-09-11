@@ -1,16 +1,18 @@
-# shield-study-rappor
+# RAPPOR shield study prototype
+This is a research prototype built as part of an internship project. See the Mozilla Governance
+[thread](https://groups.google.com/forum/#!msg/mozilla.governance/81gMQeMEL0w/diyeJRFxAgAJ) for context.
 
 ## Introduction
 This addon is a SHIELD Study that collects the eTLD+1 of the user's homepage
 and applies [RAPPOR](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/42852.pdf),
-a [Differential Privacy](https://en.wikipedia.org/wiki/Differential_privacy) algorithm, to encode it.
-The result is sent in a custom ping.
+a [Differential Privacy](https://en.wikipedia.org/wiki/Differential_privacy) algorithm, to encode and obfuscate it.
+The result is sent in a custom ping with no [clientId](https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/common-ping.html)
+ or [environment](https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/environment.html) information.
 
-The purpose of this study is to answer some questions with unbiased data such as:
-
-- "Which top sites are users visiting?"
-- "Which sites using Flash does a user encounter?"
-- "Which sites does a user see heavy Jank on?" 
+The purpose of this study is to confirm that we can get representative data, preserving indivudual
+user privacy, for the Firefox population.
+Using RAPPOR we collect aggregate data on the most common domain value users set their homepage to (e.g. foo.com)
+or the value of "about:home".
 
 ## Addon Behaviour
 The addon extracts the eTLD+1 from the value stored in the `browser.startup.homepage` 
