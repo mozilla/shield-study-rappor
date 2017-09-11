@@ -880,7 +880,7 @@ class StudyUtils {
     log.debug(`telemetry: ${JSON.stringify(payload)}`);
     // FIXME marcrowo: addClientId makes the ping not appear in test?
     // seems like a problem with Telemetry, not the shield-study-utils library
-    const telOptions = {addClientId: true, addEnvironment: true};
+    const telOptions = {addClientId: false, addEnvironment: false};
     if (!this.telemetryConfig.send) {
       log.debug("NOT sending.  `telemetryConfig.send` is false");
       return false;
